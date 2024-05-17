@@ -16,62 +16,81 @@ class WeatherController extends Controller
 
     public function index(Request $request)
     {
-        $city = $request->query('city', 'Dhaka');
-        $weather = $this->getWeatherData($city);
-
-        if ($weather) {
-            return view('weather.index', ['weather' => $weather]);
-        } else {
-            return view('weather.index', ['error' => 'City not found']);
-        }
+        return $this->getWeatherView($request, 'index');
     }
 
     public function hourly(Request $request)
     {
-        $city = $request->query('city', 'Dhaka');
-        $weather = $this->getHourlyWeatherData($city);
-
-        if ($weather) {
-            return view('weather.hourly', ['weather' => $weather]);
-        } else {
-            return view('weather.hourly', ['error' => 'City not found']);
-        }
+        return $this->getWeatherView($request, 'hourly');
     }
+
 
     public function tenDay(Request $request)
     {
-        $city = $request->query('city', 'Dhaka');
-        $weather = $this->getTenDayWeatherData($city);
+        return $this->getEightDayWeather($request);
+    }
 
-        if ($weather) {
-            return view('weather.ten-day', ['weather' => $weather]);
+    private function getEightDayWeather(Request $request)
+    {
+        $city = $request->query('city', 'Dhaka');
+        $weatherData = $this->getWeatherData($city, 'forecast');
+
+        if ($weatherData && isset($weatherData['list'])) {
+            $eightDayForecast = [];
+            $endDate = date('Y-m-d', strtotime('+8 days'));
+            foreach ($weatherData['list'] as $day) {
+                $date = date('Y-m-d', strtotime($day['dt_txt']));
+                if ($date <= $endDate) {
+                    // Ensure 'main' and 'weather' keys exist before accessing 'temp' and 'description'
+                    if (isset($day['main']['temp']) && isset($day['weather'][0]['description'])) {
+                        $eightDayForecast[$date] = [
+                            'date' => date('D, M d', strtotime($day['dt'])),
+                            'temperature' => $day['main']['temp'],
+                            'description' => ucfirst($day['weather'][0]['description']),
+                        ];
+                    }
+                } else {
+                    break;
+                }
+            }
+            return view('weather.ten-day', ['weather' => $eightDayForecast]);
         } else {
-            return view('weather.ten-day', ['error' => 'City not found']);
+            return view('weather.ten-day', ['error' => 'City not found or data not available']);
         }
     }
+
 
     public function weekend(Request $request)
     {
         $city = $request->query('city', 'Dhaka');
-        $weather = $this->getWeekendWeatherData($city);
+        $weatherData = $this->getWeatherData($city, 'forecast');
 
-        if ($weather) {
-            return view('weather.weekend', ['weather' => $weather]);
+        if ($weatherData && isset($weatherData['list'])) {
+            $weekendForecast = [];
+            foreach ($weatherData['list'] as $day) {
+                // Check if the day falls on Saturday or Sunday (6 or 7)
+                if (date('N', $day['dt']) >= 6) {
+                    // Ensure 'main' and 'weather' keys exist before accessing 'temp' and 'description'
+                    if (isset($day['main']['temp']) && isset($day['weather'][0]['description'])) {
+                        $weekendForecast[] = [
+                            'date' => date('D, M d', $day['dt']),
+                            'temperature' => $day['main']['temp'],
+                            'description' => ucfirst($day['weather'][0]['description']),
+                        ];
+                    }
+                }
+            }
+
+            return view('weather.weekend', ['weather' => $weekendForecast]);
         } else {
-            return view('weather.weekend', ['error' => 'City not found']);
+            return view('weather.weekend', ['error' => 'City not found or data not available']);
         }
     }
 
+
     public function monthly(Request $request)
     {
-        $city = $request->query('city', 'Dhaka');
-        $weather = $this->getMonthlyWeatherData($city);
-
-        if ($weather) {
-            return view('weather.monthly', ['weather' => $weather]);
-        } else {
-            return view('weather.monthly', ['error' => 'City not found']);
-        }
+        return $this->getWeatherView($request, 'monthly');
     }
 
     public function radar()
@@ -86,60 +105,60 @@ class WeatherController extends Controller
 
     public function tomorrow(Request $request)
     {
-        $city = $request->query('city', 'Dhaka');
-        $weather = $this->getTomorrowWeatherData($city);
-
-        if ($weather) {
-            return view('weather.tomorrow', ['weather' => $weather]);
-        } else {
-            return view('weather.tomorrow', ['error' => 'City not found']);
-        }
+        return $this->getWeatherView($request, 'tomorrow');
     }
 
     public function nextWeek(Request $request)
     {
-        $city = $request->query('city', 'Dhaka');
-        $weather = $this->getNextWeekWeatherData($city);
+        return $this->getWeatherView($request, 'next-week');
+    }
 
-        if ($weather) {
-            return view('weather.next-week', ['weather' => $weather]);
+    private function getWeatherView(Request $request, $view)
+    {
+        $city = $request->query('city', 'Dhaka');
+        $weatherData = $this->getWeatherData($city, $view);
+
+        if ($weatherData) {
+            return view('weather.' . $view, ['weather' => $weatherData]);
         } else {
-            return view('weather.next-week', ['error' => 'City not found']);
+            return view('weather.' . $view, ['error' => 'City not found']);
         }
     }
 
-    private function getWeatherData($city)
+    private function getWeatherData($city, $view)
     {
-        // Fetch current weather data logic
+        $response = Http::get('https://api.openweathermap.org/data/2.5/' . $this->getEndpoint($view), [
+            'q' => $city,
+            'appid' => $this->apiKey,
+            'units' => 'metric',
+        ]);
+
+        if ($response->successful()) {
+            return $response->json();
+        } else {
+            return null;
+        }
     }
 
-    private function getHourlyWeatherData($city)
+    private function getEndpoint($view)
     {
-        // Fetch hourly weather data logic
-    }
-
-    private function getTenDayWeatherData($city)
-    {
-        // Fetch 10-day weather data logic
-    }
-
-    private function getWeekendWeatherData($city)
-    {
-        // Fetch weekend weather data logic
-    }
-
-    private function getMonthlyWeatherData($city)
-    {
-        // Fetch monthly weather data logic
-    }
-
-    private function getTomorrowWeatherData($city)
-    {
-        // Fetch tomorrow's weather data logic
-    }
-
-    private function getNextWeekWeatherData($city)
-    {
-        // Fetch next week's weather data logic
+        switch ($view) {
+            case 'index':
+                return 'weather';
+            case 'hourly':
+                return 'forecast';
+            case 'ten-day':
+                return 'forecast';
+            case 'weekend':
+                return 'forecast';
+            case 'monthly':
+                return 'forecast';
+            case 'tomorrow':
+                return 'forecast';
+            case 'next-week':
+                return 'forecast';
+            default:
+                return 'weather';
+        }
     }
 }
