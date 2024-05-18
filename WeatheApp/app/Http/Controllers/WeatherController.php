@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use DateTime;
 
 class WeatherController extends Controller
 {
@@ -37,27 +38,29 @@ class WeatherController extends Controller
 
         if ($weatherData && isset($weatherData['list'])) {
             $eightDayForecast = [];
-            $endDate = date('Y-m-d', strtotime('+8 days'));
+            $today = new DateTime();
+            $endDate = (clone $today)->modify('+8 days');
+
             foreach ($weatherData['list'] as $day) {
-                $date = date('Y-m-d', strtotime($day['dt_txt']));
-                if ($date <= $endDate) {
-                    // Ensure 'main' and 'weather' keys exist before accessing 'temp' and 'description'
-                    if (isset($day['main']['temp']) && isset($day['weather'][0]['description'])) {
-                        $eightDayForecast[$date] = [
-                            'date' => date('D, M d', strtotime($day['dt'])),
+                // Ensure 'dt_txt', 'main.temp' and 'weather[0].description' keys exist
+                if (isset($day['dt_txt'], $day['main']['temp'], $day['weather'][0]['description'])) {
+                    $date = new DateTime($day['dt_txt']);
+                    if ($date <= $endDate) {
+                        $eightDayForecast[$date->format('Y-m-d')] = [
+                            'date' => $date->format('D, M d'),
                             'temperature' => $day['main']['temp'],
                             'description' => ucfirst($day['weather'][0]['description']),
                         ];
                     }
-                } else {
-                    break;
                 }
             }
+
             return view('weather.ten-day', ['weather' => $eightDayForecast]);
         } else {
             return view('weather.ten-day', ['error' => 'City not found or data not available']);
         }
     }
+
 
 
     public function weekend(Request $request)
@@ -118,12 +121,31 @@ class WeatherController extends Controller
         $city = $request->query('city', 'Dhaka');
         $weatherData = $this->getWeatherData($city, $view);
 
+        // Store recent searches in the session
+        $recentSearches = session()->get('recentSearches', []);
+
+        // Add current search to recent searches
+        $currentSearch = [
+            'city' => $city,
+            'weather' => $weatherData // Store weather data along with the city
+        ];
+
+        // Add current search to recent searches
+        array_unshift($recentSearches, $currentSearch);
+        // Keep only the latest 5 searches
+        $recentSearches = array_slice($recentSearches, 0, 5);
+
+        session(['recentSearches' => $recentSearches]);
+
         if ($weatherData) {
             return view('weather.' . $view, ['weather' => $weatherData]);
         } else {
             return view('weather.' . $view, ['error' => 'City not found']);
         }
     }
+
+
+
 
     private function getWeatherData($city, $view)
     {
@@ -133,12 +155,28 @@ class WeatherController extends Controller
             'units' => 'metric',
         ]);
 
+        \Log::info($response->json());
+
         if ($response->successful()) {
-            return $response->json();
+            $weatherData = $response->json();
+            // Add additional weather information
+            if (isset($weatherData['main'])) {
+                $weatherData['temperature'] = $weatherData['main']['temp'];
+                $weatherData['humidity'] = $weatherData['main']['humidity'];
+            }
+            if (isset($weatherData['wind']) && isset($weatherData['wind']['speed'])) {
+                $weatherData['wind_speed'] = $weatherData['wind']['speed'];
+            } else {
+                // Set wind speed to null if it's not available
+                $weatherData['wind_speed'] = null;
+            }
+            return $weatherData;
         } else {
             return null;
         }
     }
+
+
 
     private function getEndpoint($view)
     {

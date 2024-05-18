@@ -8,11 +8,16 @@
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css">
     <style>
         body {
-            background: #f2f2f2;
+            background: linear-gradient(to bottom, #83a4d4, #b6fbff);
             color: #333;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
         }
         .navbar-custom {
-            background-color: #005b96;
+            background-color: rgba(0, 91, 150, 0.8);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000; /* Ensure the navbar is above other elements */
+            position: relative; /* Necessary to apply z-index */
         }
         .navbar-custom .navbar-nav .nav-link {
             color: #fff;
@@ -29,11 +34,12 @@
             margin: auto;
         }
         .weather-card {
-            background: white;
+            background: rgba(255, 255, 255, 0.9);
             border: 1px solid #ddd;
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
         }
         .weather-info {
             font-size: 1.2em;
@@ -45,13 +51,94 @@
             margin-top: 20px;
         }
         .additional-info .card {
-            background: white;
+            background: rgba(255, 255, 255, 0.9);
             border: 1px solid #ddd;
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
         }
+        .recent-searches {
+            margin-top: 20px;
+        }
+        .recent-searches .list-group-item {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+        }
+        /* Cloud and Sun */
+        .cloud-container {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            height: 150px;
+            z-index: 0; /* Ensure clouds are behind other elements */
+        }
+        .cloud {
+            position: absolute;
+            background: #e0e0e0;
+            border-radius: 50%;
+            animation: moveClouds 20s linear infinite;
+        }
+        .cloud:before,
+        .cloud:after {
+            content: '';
+            position: absolute;
+            background: #e0e0e0;
+            border-radius: 50%;
+        }
+        .cloud {
+            width: 100px;
+            height: 60px;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .cloud:before {
+            width: 60px;
+            height: 60px;
+            top: -30px;
+            left: 10px;
+        }
+        .cloud:after {
+            width: 80px;
+            height: 80px;
+            top: -40px;
+            left: -30px;
+        }
+        .sun {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: #FFD700;
+            border-radius: 50%;
+            top: 50px;
+            right: 20px;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            animation: sunMovement 20s linear infinite;
+        }
+        @keyframes moveClouds {
+            0% {
+                left: -20%;
+            }
+            100% {
+                left: 120%;
+            }
+        }
+        @keyframes sunMovement {
+            0%, 100% {
+                transform: translateY(0) scale(1);
+            }
+            50% {
+                transform: translateY(-20px) scale(1.1);
+            }
+        }
+        /* Additional Clouds */
+        .cloud:nth-child(1) { animation-duration: 20s; }
+        .cloud:nth-child(2) { animation-duration: 25s; top: 50px; left: 70%; }
+        .cloud:nth-child(3) { animation-duration: 30s; top: 80px; left: 30%; }
     </style>
 </head>
 <body>
@@ -111,8 +198,55 @@
 
     <div class="container">
         @yield('content')
+
+        <!-- Recent Searches Section -->
+        <div class="recent-searches">
+            <h5>Your Recent Searches</h5>
+            <ul class="list-group">
+                @foreach(session('recentSearches', []) as $search)
+                    @if(is_array($search))
+                        <li class="list-group-item">
+                            <strong>City:</strong> {{ $search['city'] }}
+                            @if(isset($search['weather']))
+                                <span class="badge badge-primary">
+                                    @if(isset($search['weather']['temperature']))
+                                        Temperature: {{ $search['weather']['temperature'] }}°C,
+                                    @else
+                                        <span class="badge badge-warning">No temperature data available</span>
+                                    @endif
+
+                                    @if(isset($search['weather']['humidity']))
+                                        Humidity: {{ $search['weather']['humidity'] }}%,
+                                    @else
+                                        <span class="badge badge-warning">No humidity data available</span>
+                                    @endif
+
+                                    @if(isset($search['weather']['wind-speed']))
+                                        Wind Speed: {{ $search['weather']['wind-speed'] }} m/s
+                                    @else
+                                        <span class="badge badge-warning">No wind speed data available</span>
+                                    @endif
+                                </span>
+                            @else
+                                <span class="badge badge-warning">No weather data available</span>
+                            @endif
+                        </li>
+                    @else
+                        <li class="list-group-item">Invalid search data</li>
+                    @endif
+                @endforeach
+            </ul>
+        </div>
     </div>
 
+    <div class="cloud-container">
+        <div class="sun"></div>
+        <div class="cloud"></div>
+        <div class="cloud"></div>
+        <div class="cloud"></div>
+    </div>
+
+    <!-- Modals -->
     <!-- Register Modal -->
     <div class="modal fade" id="registerModal" tabindex="-1" role="dialog" aria-labelledby="registerModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -139,8 +273,8 @@
                             <input type="password" class="form-control" id="password" name="password" required>
                         </div>
                         <div class="form-group">
-                            <label for="password_confirmation">Confirm Password</label>
-                            <input type="password" class="form-control" id="password_confirmation" name="password_confirmation" required>
+                            <label for="password-confirm">Confirm Password</label>
+                            <input type="password" class="form-control" id="password-confirm" name="password_confirmation" required>
                         </div>
                         <button type="submit" class="btn btn-primary">Register</button>
                     </form>
@@ -170,6 +304,12 @@
                             <label for="password">Password</label>
                             <input type="password" class="form-control" id="password" name="password" required>
                         </div>
+                        <div class="form-group">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                                <label class="form-check-label" for="remember">Remember Me</label>
+                            </div>
+                        </div>
                         <button type="submit" class="btn btn-primary">Login</button>
                     </form>
                 </div>
@@ -177,6 +317,7 @@
         </div>
     </div>
 
+    <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
