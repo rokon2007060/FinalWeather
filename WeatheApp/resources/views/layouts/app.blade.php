@@ -217,44 +217,48 @@
     <div class="container">
         @yield('content')
 
-        <!-- Recent Searches Section -->
-        <div class="recent-searches">
-            <h5>Your Recent Searches</h5>
-            <ul class="list-group">
-                @foreach(session('recentSearches', []) as $search)
-                    @if(is_array($search))
-                        <li class="list-group-item">
-                            <strong>City:</strong> {{ $search['city'] }}
-                            @if(isset($search['weather']))
-                                <span class="badge badge-primary">
-                                    @if(isset($search['weather']['temperature']))
-                                        Temperature: {{ $search['weather']['temperature'] }}°C,
-                                    @else
-                                        <span class="badge badge-warning">No temperature data available</span>
-                                    @endif
+        @if(Session::has('user'))
+            <!-- Recent Searches Section -->
+            <div class="recent-searches">
+                <h5>Your Recent Searches</h5>
+                <ul class="list-group">
+                    @foreach(session('recentSearches', []) as $search)
+                        @if(is_array($search))
+                            <li class="list-group-item">
+                                <strong>City:</strong> {{ $search['city'] }}
+                                @if(isset($search['weather']))
+                                    <span class="badge badge-primary">
+                                        @if(isset($search['weather']['temperature']))
+                                            Temperature: {{ $search['weather']['temperature'] }}°C,
+                                        @else
+                                            <span class="badge badge-warning">No temperature data available</span>
+                                        @endif
 
-                                    @if(isset($search['weather']['humidity']))
-                                        Humidity: {{ $search['weather']['humidity'] }}%,
-                                    @else
-                                        <span class="badge badge-warning">No humidity data available</span>
-                                    @endif
+                                        @if(isset($search['weather']['humidity']))
+                                            Humidity: {{ $search['weather']['humidity'] }}%,
+                                        @else
+                                            <span class="badge badge-warning">No humidity data available</span>
+                                        @endif
 
-                                    @if(isset($search['weather']['wind-speed']))
-                                        Wind Speed: {{ $search['weather']['wind-speed'] }} m/s
-                                    @else
-                                        <span class="badge badge-warning">No wind speed data available</span>
-                                    @endif
-                                </span>
-                            @else
-                                <span class="badge badge-warning">No weather data available</span>
-                            @endif
-                        </li>
-                    @else
-                        <li class="list-group-item">Invalid search data</li>
-                    @endif
-                @endforeach
-            </ul>
-        </div>
+                                        @if(isset($search['weather']['wind-speed']))
+                                            Wind Speed: {{ $search['weather']['wind-speed'] }} m/s
+                                        @else
+                                            <span class="badge badge-warning">No wind speed data available</span>
+                                        @endif
+                                    </span>
+                                @else
+                                    <span class="badge badge-warning">No weather data available</span>
+                                @endif
+                            </li>
+                        @else
+                            <li class="list-group-item">Invalid search data</li>
+                        @endif
+                    @endforeach
+                </ul>
+            </div>
+
+        @endif
+
     </div>
 
 
@@ -265,7 +269,6 @@
         <div class="cloud"></div>
     </div>
 
-    <!-- Modals -->
     <!-- Register Modal -->
     <div class="modal fade" id="registerModal" tabindex="-1" role="dialog" aria-labelledby="registerModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -337,7 +340,7 @@
     </div>
 
     <!-- Scripts -->
-    {{-- <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script> --}}
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
