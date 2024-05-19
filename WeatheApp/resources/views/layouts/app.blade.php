@@ -27,6 +27,7 @@
         }
         .navbar-custom .navbar-brand {
             color: #fff;
+            font-size: 40px;
         }
         .search-bar {
             width: 100%;
@@ -160,12 +161,12 @@
                 <li class="nav-item">
                     <a class="nav-link" href="/weather/weekend">Weekend</a>
                 </li>
-                <li class="nav-item">
+                {{-- <li class="nav-item">
                     <a class="nav-link" href="/weather/monthly">Monthly</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="/weather/radar">Radar</a>
-                </li>
+                </li> --}}
                 <li class="nav-item">
                     <a class="nav-link" href="/weather/news">Weather News</a>
                 </li>
@@ -174,8 +175,8 @@
                         More Forecasts
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdownMenuLink">
-                        <a class="dropdown-item" href="/weather/tomorrow">Tomorrow</a>
-                        <a class="dropdown-item" href="/weather/next-week">Next Week</a>
+                        {{-- <a class="dropdown-item" href="/weather/tomorrow">Tomorrow</a>
+                        <a class="dropdown-item" href="/weather/next-week">Next Week</a> --}}
                     </div>
                 </li>
 
@@ -194,7 +195,8 @@
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="authDropdown">
                         @if(Session::has('user'))
-                            <a class="dropdown-item" href="/profile">Profile</a>
+                            {{-- <a class="dropdown-item" href="/profile">Profile</a> --}}
+                            <span class="ml-2">{{ Session::get('user')->name }} - {{ Session::get('user')->email }}</span>
                             <a class="dropdown-item" href="/profile/liked-news">Liked News</a>
                             <a class="dropdown-item" href="/profile/comments">Comments</a>
                             <div class="dropdown-divider"></div>
