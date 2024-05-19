@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use DateTime;
+use Illuminate\Support\Facades\Auth;
+use App\Models\NewsLike;
+use App\Models\NewsComment;
+use App\Models\WeatherNews;
 
 class WeatherController extends Controller
 {
@@ -25,7 +28,6 @@ class WeatherController extends Controller
         return $this->getWeatherView($request, 'hourly');
     }
 
-
     public function tenDay(Request $request)
     {
         return $this->getEightDayWeather($request);
@@ -38,13 +40,12 @@ class WeatherController extends Controller
 
         if ($weatherData && isset($weatherData['list'])) {
             $eightDayForecast = [];
-            $today = new DateTime();
+            $today = new \DateTime();
             $endDate = (clone $today)->modify('+8 days');
 
             foreach ($weatherData['list'] as $day) {
-                // Ensure 'dt_txt', 'main.temp' and 'weather[0].description' keys exist
                 if (isset($day['dt_txt'], $day['main']['temp'], $day['weather'][0]['description'])) {
-                    $date = new DateTime($day['dt_txt']);
+                    $date = new \DateTime($day['dt_txt']);
                     if ($date <= $endDate) {
                         $eightDayForecast[$date->format('Y-m-d')] = [
                             'date' => $date->format('D, M d'),
@@ -61,8 +62,6 @@ class WeatherController extends Controller
         }
     }
 
-
-
     public function weekend(Request $request)
     {
         $city = $request->query('city', 'Dhaka');
@@ -71,9 +70,7 @@ class WeatherController extends Controller
         if ($weatherData && isset($weatherData['list'])) {
             $weekendForecast = [];
             foreach ($weatherData['list'] as $day) {
-                // Check if the day falls on Saturday or Sunday (6 or 7)
                 if (date('N', $day['dt']) >= 6) {
-                    // Ensure 'main' and 'weather' keys exist before accessing 'temp' and 'description'
                     if (isset($day['main']['temp']) && isset($day['weather'][0]['description'])) {
                         $weekendForecast[] = [
                             'date' => date('D, M d', $day['dt']),
@@ -90,6 +87,21 @@ class WeatherController extends Controller
         }
     }
 
+    public function news(Request $request)
+    {
+        $apiKey = env('NEWS_API_KEY');
+        $query = 'weather';
+        $apiUrl = 'https://newsapi.org/v2/everything?q=' . urlencode($query) . '&apiKey=' . $apiKey;
+
+        $response = Http::get($apiUrl);
+
+        if ($response->successful()) {
+            $newsData = $response->json();
+            return view('weather.news', ['news' => $newsData['articles']]);
+        } else {
+            return view('weather.news', ['error' => 'Failed to retrieve weather news']);
+        }
+    }
 
     public function monthly(Request $request)
     {
@@ -99,11 +111,6 @@ class WeatherController extends Controller
     public function radar()
     {
         return view('weather.radar');
-    }
-
-    public function video()
-    {
-        return view('weather.video');
     }
 
     public function tomorrow(Request $request)
@@ -116,23 +123,36 @@ class WeatherController extends Controller
         return $this->getWeatherView($request, 'next-week');
     }
 
+    public function likeNews($id)
+    {
+        $userId = Auth::id();
+        $newsLike = NewsLike::firstOrCreate(['news_id' => $id, 'user_id' => $userId]);
+        return back();
+    }
+
+    public function commentNews(Request $request, $id)
+    {
+        $userId = Auth::id();
+        $comment = new NewsComment();
+        $comment->news_id = $id;
+        $comment->user_id = $userId;
+        $comment->comment = $request->input('comment');
+        $comment->save();
+        return back();
+    }
+
     private function getWeatherView(Request $request, $view)
     {
         $city = $request->query('city', 'Dhaka');
         $weatherData = $this->getWeatherData($city, $view);
 
-        // Store recent searches in the session
         $recentSearches = session()->get('recentSearches', []);
-
-        // Add current search to recent searches
         $currentSearch = [
             'city' => $city,
-            'weather' => $weatherData // Store weather data along with the city
+            'weather' => $weatherData
         ];
 
-        // Add current search to recent searches
         array_unshift($recentSearches, $currentSearch);
-        // Keep only the latest 5 searches
         $recentSearches = array_slice($recentSearches, 0, 5);
 
         session(['recentSearches' => $recentSearches]);
@@ -144,9 +164,6 @@ class WeatherController extends Controller
         }
     }
 
-
-
-
     private function getWeatherData($city, $view)
     {
         $response = Http::get('https://api.openweathermap.org/data/2.5/' . $this->getEndpoint($view), [
@@ -155,11 +172,8 @@ class WeatherController extends Controller
             'units' => 'metric',
         ]);
 
-        \Log::info($response->json());
-
         if ($response->successful()) {
             $weatherData = $response->json();
-            // Add additional weather information
             if (isset($weatherData['main'])) {
                 $weatherData['temperature'] = $weatherData['main']['temp'];
                 $weatherData['humidity'] = $weatherData['main']['humidity'];
@@ -167,7 +181,6 @@ class WeatherController extends Controller
             if (isset($weatherData['wind']) && isset($weatherData['wind']['speed'])) {
                 $weatherData['wind_speed'] = $weatherData['wind']['speed'];
             } else {
-                // Set wind speed to null if it's not available
                 $weatherData['wind_speed'] = null;
             }
             return $weatherData;
@@ -175,8 +188,6 @@ class WeatherController extends Controller
             return null;
         }
     }
-
-
 
     private function getEndpoint($view)
     {
@@ -200,3 +211,4 @@ class WeatherController extends Controller
         }
     }
 }
+
