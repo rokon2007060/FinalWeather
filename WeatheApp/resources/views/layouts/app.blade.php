@@ -11,6 +11,7 @@
             background: linear-gradient(to bottom, #83a4d4, #b6fbff);
             color: #333;
             font-family: 'Arial', sans-serif;
+            /* overflow: hidden; */
         }
         .navbar-custom {
             background-color: rgba(0, 91, 150, 0.8);
@@ -177,20 +178,22 @@
                         <a class="dropdown-item" href="/weather/next-week">Next Week</a>
                     </div>
                 </li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="authDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        @php
-                            $user = session('user');
-                        @endphp
 
-                        @if($user && is_object($user))
-                            {{ $user->name }}
-                        @else
-                            Account
-                        @endif
+
+            </ul>
+            <form class="form-inline search-bar ml-lg-5" method="GET" action="/weather">
+                <input class="form-control mr-sm-2" type="search" placeholder="Search City or Zip Code" aria-label="Search" name="city" required>
+                <button class="btn btn-outline-light my-2 my-sm-0" type="submit"><i class="fas fa-search"></i></button>
+            </form>
+
+            <ul class="navbar-nav">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="authDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-user-circle fa-lg"></i>
+                        <span class="ml-2">@if(Session::has('user')) {{-- {{ Session::get('user')->name }} --}} @else Account @endif</span>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="authDropdown">
-                        @if($user && is_object($user))
+                        @if(Session::has('user'))
                             <a class="dropdown-item" href="/profile">Profile</a>
                             <a class="dropdown-item" href="/profile/liked-news">Liked News</a>
                             <a class="dropdown-item" href="/profile/comments">Comments</a>
@@ -205,47 +208,133 @@
                         @endif
                     </div>
                 </li>
-
             </ul>
-            <form class="form-inline search-bar ml-lg-5" method="GET" action="/weather">
-                <input class="form-control mr-sm-2" type="search" placeholder="Search City or Zip Code" aria-label="Search" name="city" required>
-                <button class="btn btn-outline-light my-2 my-sm-0" type="submit"><i class="fas fa-search"></i></button>
-            </form>
         </div>
     </nav>
 
     <div class="container">
         @yield('content')
 
-        <!-- Additional content like additional weather info and recent searches here -->
-
-        <div class="additional-info">
-            <!-- Additional weather information and cards -->
-            <div class="card">
-                <h5 class="card-title">Additional Weather Info</h5>
-                <p class="card-text">Humidity: 60%</p>
-                <p class="card-text">Visibility: 10 km</p>
-                <p class="card-text">UV Index: 5</p>
-            </div>
-        </div>
-
+        <!-- Recent Searches Section -->
         <div class="recent-searches">
-            <h5>Recent Searches</h5>
+            <h5>Your Recent Searches</h5>
             <ul class="list-group">
-                <li class="list-group-item">New York, NY</li>
-                <li class="list-group-item">Los Angeles, CA</li>
-                <li class="list-group-item">Chicago, IL</li>
+                @foreach(session('recentSearches', []) as $search)
+                    @if(is_array($search))
+                        <li class="list-group-item">
+                            <strong>City:</strong> {{ $search['city'] }}
+                            @if(isset($search['weather']))
+                                <span class="badge badge-primary">
+                                    @if(isset($search['weather']['temperature']))
+                                        Temperature: {{ $search['weather']['temperature'] }}°C,
+                                    @else
+                                        <span class="badge badge-warning">No temperature data available</span>
+                                    @endif
+
+                                    @if(isset($search['weather']['humidity']))
+                                        Humidity: {{ $search['weather']['humidity'] }}%,
+                                    @else
+                                        <span class="badge badge-warning">No humidity data available</span>
+                                    @endif
+
+                                    @if(isset($search['weather']['wind-speed']))
+                                        Wind Speed: {{ $search['weather']['wind-speed'] }} m/s
+                                    @else
+                                        <span class="badge badge-warning">No wind speed data available</span>
+                                    @endif
+                                </span>
+                            @else
+                                <span class="badge badge-warning">No weather data available</span>
+                            @endif
+                        </li>
+                    @else
+                        <li class="list-group-item">Invalid search data</li>
+                    @endif
+                @endforeach
             </ul>
         </div>
     </div>
 
+
     <div class="cloud-container">
+        <div class="sun"></div>
         <div class="cloud"></div>
         <div class="cloud"></div>
         <div class="cloud"></div>
     </div>
-    <div class="sun"></div>
 
+    <!-- Modals -->
+    <!-- Register Modal -->
+    <div class="modal fade" id="registerModal" tabindex="-1" role="dialog" aria-labelledby="registerModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="registerModalLabel">Register</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="{{ route('register') }}">
+                        @csrf
+                        <div class="form-group">
+                            <label for="name">Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">E-Mail Address</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password-confirm">Confirm Password</label>
+                            <input type="password" class="form-control" id="password-confirm" name="password_confirmation" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Register</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="loginModalLabel">Login</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="{{ route('login') }}">
+                        @csrf
+                        <div class="form-group">
+                            <label for="email">E-Mail Address</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <div class="form-group">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                                <label class="form-check-label" for="remember">Remember Me</label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Login</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>

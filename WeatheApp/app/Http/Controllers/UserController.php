@@ -15,7 +15,9 @@ class UserController extends Controller
         $user = User::where('email', $credentials['email'])->first();
 
         if ($user && Hash::check($credentials['password'], $user->password)) {
-            Session::put('user', $user->email);
+            Session::put('user', $user);
+            \Log::info('Session data:', session()->all());
+             // Store the entire user object
             return redirect('/weather');
         } else {
             return back()->withErrors(['email' => 'Invalid credentials']);
@@ -36,14 +38,16 @@ class UserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        Session::put('user', $user->email);
+        Session::put('user', $user);  // Store the entire user object
         return redirect('/weather');
     }
 
     public function logout()
     {
         Session::forget('user');
+        Session::forget('recent_searches');
         return redirect('/weather');
     }
 }
+
 

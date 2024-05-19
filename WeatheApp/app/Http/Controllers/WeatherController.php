@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\NewsLike;
 use App\Models\NewsComment;
 use App\Models\WeatherNews;
+use Illuminate\Support\Facades\Session;
 
 class WeatherController extends Controller
 {
@@ -123,21 +124,72 @@ class WeatherController extends Controller
         return $this->getWeatherView($request, 'next-week');
     }
 
+    // public function likeNews($id)
+    // {
+    //     $userId = Auth::id();
+    //     $newsLike = NewsLike::firstOrCreate(['news_id' => $id, 'user_id' => $userId]);
+    //     return back();
+    // }
+
+    // public function commentNews(Request $request, $id)
+    // {
+    //     $userId = Auth::id();
+    //     $comment = new NewsComment();
+    //     $comment->news_id = $id;
+    //     $comment->user_id = $userId;
+    //     $comment->comment = $request->input('comment');
+    //     $comment->save();
+    //     return back();
+    // }
+
+
+    public function index1()
+    {
+        $news = WeatherNews::all();
+        return view('weather.index1', compact('news'));
+    }
+
+    // Method to show a specific news article
+    public function show($id)
+    {
+        $article = WeatherNews::with(['comments.user', 'likes'])->findOrFail($id);
+        return view('weather.show', compact('article'));
+    }
+
+    // Method to like a news article
     public function likeNews($id)
     {
-        $userId = Auth::id();
-        $newsLike = NewsLike::firstOrCreate(['news_id' => $id, 'user_id' => $userId]);
+        $article = WeatherNews::findOrFail($id);
+
+        // Check if the user already liked this article
+        $like = NewsLike::where('weather_news_id', $id)
+                        ->where('user_id', Auth::id())
+                        ->first();
+
+        if (!$like) {
+            NewsLike::create([
+                'weather_news_id' => $id,
+                'user_id' => Auth::id(),
+            ]);
+        }
+
         return back();
     }
 
+    // Method to comment on a news article
     public function commentNews(Request $request, $id)
     {
-        $userId = Auth::id();
-        $comment = new NewsComment();
-        $comment->news_id = $id;
-        $comment->user_id = $userId;
-        $comment->comment = $request->input('comment');
-        $comment->save();
+        $request->validate([
+            'comment' => 'required|string|max:500',
+        ]);
+
+        $article = WeatherNews::findOrFail($id);
+
+        $article->comments()->create([
+            'user_id' => Auth::id(),
+            'content' => $request->comment,
+        ]);
+
         return back();
     }
 
@@ -146,6 +198,7 @@ class WeatherController extends Controller
         $city = $request->query('city', 'Dhaka');
         $weatherData = $this->getWeatherData($city, $view);
 
+        if (Session::has('user')) {
         $recentSearches = session()->get('recentSearches', []);
         $currentSearch = [
             'city' => $city,
@@ -155,7 +208,7 @@ class WeatherController extends Controller
         array_unshift($recentSearches, $currentSearch);
         $recentSearches = array_slice($recentSearches, 0, 5);
 
-        session(['recentSearches' => $recentSearches]);
+        session(['recentSearches' => $recentSearches]);}
 
         if ($weatherData) {
             return view('weather.' . $view, ['weather' => $weatherData]);
@@ -188,6 +241,10 @@ class WeatherController extends Controller
             return null;
         }
     }
+
+
+
+
 
     private function getEndpoint($view)
     {
